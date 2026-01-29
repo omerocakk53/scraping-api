@@ -2,10 +2,53 @@ const { getBrowser } = require("../services/browserService");
 const cheerio = require("cheerio");
 const axios = require("axios");
 const { validateScrapeRequest } = require("../utils/validation");
+const fs = require("fs");
+const path = require("path");
 
 // ==========================================
 // YARDIMCI METOTLAR (Helper Methods)
 // ==========================================
+
+/**
+ * URL'den geçerli bir dosya ismi oluşturur
+ */
+const createFilenameFromUrl = (url) => {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.replace(/[^a-z0-9]/gi, "-");
+    const pathname = urlObj.pathname.replace(/[^a-z0-9]/gi, "-");
+    const date = new Date().toISOString().replace(/[:.]/g, "-");
+    return `${hostname}${pathname}-${date}.json`;
+  } catch (error) {
+    return `unknown-${Date.now()}.json`;
+  }
+};
+
+/**
+ * JSON verisini dosyaya kaydeder
+ */
+const saveToDataFolder = async (data, filename) => {
+  const dataDir = path.join(__dirname, "../../data");
+  const filePath = path.join(dataDir, filename);
+
+  try {
+    // Klasör yoksa oluştur
+    if (!fs.existsSync(dataDir)) {
+      await fs.promises.mkdir(dataDir, { recursive: true });
+    }
+
+    await fs.promises.writeFile(
+      filePath,
+      JSON.stringify(data, null, 2),
+      "utf-8",
+    );
+    console.log(`[File] Veri kaydedildi: ${filePath}`);
+    return filePath;
+  } catch (error) {
+    console.error(`[File] Dosya kaydetme hatası: ${error.message}`);
+    return null;
+  }
+};
 
 /**
  * Cheerio kullanarak HTML içeriğinden veri ayıklar
@@ -163,7 +206,11 @@ exports.scrapeUrl = async (req, res) => {
     const duration = Date.now() - startTime;
     console.log(`[Scrape] İşlem tamamlandı. Süre: ${duration}ms`);
 
-    // 3. ADIM: Başarılı yanıtı döndür
+    // 3. ADIM: Veriyi Dosyaya Kaydet
+    const filename = createFilenameFromUrl(url);
+    const savedFilePath = await saveToDataFolder(scrapedData, filename);
+
+    // 4. ADIM: Başarılı yanıtı döndür
     res.json({
       success: true,
       info: {
@@ -171,6 +218,9 @@ exports.scrapeUrl = async (req, res) => {
         method: type,
         duration: `${duration}ms`,
         timestamp: new Date().toISOString(),
+        savedToFile: savedFilePath
+          ? path.basename(savedFilePath)
+          : "Failing to save",
       },
       data: scrapedData, // Bölümlendirilmiş veri
     });
