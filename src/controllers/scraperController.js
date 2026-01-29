@@ -145,6 +145,43 @@ const extractDataWithPuppeteer = async (page) => {
 // ANA KONTROLCÜ (Main Controller)
 // ==========================================
 
+const extractCustomDataWithCheerio = ($, selectors) => {
+  const result = {};
+  selectors.forEach(({ name, selector, attr }) => {
+    if (attr) {
+      result[name] = $(selector)
+        .map((i, el) => $(el).attr(attr))
+        .get();
+    } else {
+      result[name] = $(selector)
+        .map((i, el) => $(el).text().trim())
+        .get();
+    }
+  });
+  return result;
+};
+
+const extractCustomDataWithPuppeteer = async (page, selectors) => {
+  return await page.evaluate((selectors) => {
+    const result = {};
+    selectors.forEach(({ name, selector, attr }) => {
+      const elements = Array.from(document.querySelectorAll(selector));
+      if (attr) {
+        result[name] = elements
+          .map((el) => el.getAttribute(attr))
+          .filter((v) => v !== null);
+      } else {
+        result[name] = elements.map((el) => el.innerText.trim());
+      }
+    });
+    return result;
+  }, selectors);
+};
+
+// ==========================================
+// ANA KONTROLCÜ (Main Controller)
+// ==========================================
+
 exports.scrapeUrl = async (req, res) => {
   // 1. ADIM: Gelen isteği doğrula (Validation)
   const { error, value } = validateScrapeRequest(req.body);
@@ -157,15 +194,16 @@ exports.scrapeUrl = async (req, res) => {
     });
   }
 
-  const { url, type } = value;
-  console.log(`[Scrape] İşlem başlatılıyor... URL: ${url}, Tip: ${type}`);
+  const { url, scrapeType, method, selectors } = value;
+  console.log(
+    `[Scrape] İşlem başlatılıyor... URL: ${url}, Tip: ${scrapeType}, Yöntem: ${method}`,
+  );
 
   try {
     let scrapedData;
     const startTime = Date.now();
 
-    // 2. ADIM: İstenen tipe göre scraping stratejisini seç
-    if (type === "static") {
+    if (method === "static") {
       // --- STATİK SCRAPING (Axios + Cheerio) ---
       console.log("[Scrape] Statik analiz yapılıyor...");
 
@@ -177,7 +215,12 @@ exports.scrapeUrl = async (req, res) => {
       });
 
       const $ = cheerio.load(response.data);
-      scrapedData = extractDataWithCheerio($);
+
+      if (scrapeType === "custom") {
+        scrapedData = extractCustomDataWithCheerio($, selectors);
+      } else {
+        scrapedData = extractDataWithCheerio($);
+      }
     } else {
       // --- DİNAMİK SCRAPING (Puppeteer) ---
       console.log("[Scrape] Dinamik analiz yapılıyor (Browser açılıyor)...");
@@ -195,7 +238,11 @@ exports.scrapeUrl = async (req, res) => {
         await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
 
         // Veriyi çek
-        scrapedData = await extractDataWithPuppeteer(page);
+        if (scrapeType === "custom") {
+          scrapedData = await extractCustomDataWithPuppeteer(page, selectors);
+        } else {
+          scrapedData = await extractDataWithPuppeteer(page);
+        }
       } catch (pageError) {
         throw pageError;
       } finally {
