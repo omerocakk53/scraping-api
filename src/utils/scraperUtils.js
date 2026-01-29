@@ -124,10 +124,47 @@ const extractCustomDataWithPuppeteer = async (page, selectors) => {
   }, selectors);
 };
 
+const extractYoutubeCommentsWithPuppeteer = async (page) => {
+  return await page.evaluate(() => {
+    const comments = [];
+    const commentElements = document.querySelectorAll(
+      "ytd-comment-thread-renderer",
+    );
+
+    commentElements.forEach((el) => {
+      const author = el.querySelector("#author-text")?.innerText?.trim();
+      const text = el.querySelector("#content-text")?.innerText?.trim();
+      const time = el
+        .querySelector("#published-time-text a")
+        ?.innerText?.trim();
+      const likes =
+        el.querySelector("#vote-count-middle")?.getAttribute("aria-label") ||
+        el.querySelector("#vote-count-middle")?.innerText?.trim();
+      const avatar = el.querySelector("#author-thumbnail img")?.src;
+
+      if (text) {
+        comments.push({
+          author,
+          text,
+          time,
+          likes,
+          avatar,
+        });
+      }
+    });
+
+    return {
+      total_comments_found: comments.length,
+      comments: comments,
+    };
+  });
+};
+
 module.exports = {
   createFilenameFromUrl,
   extractDataWithCheerio,
   extractCustomDataWithCheerio,
   extractDataWithPuppeteer,
   extractCustomDataWithPuppeteer,
+  extractYoutubeCommentsWithPuppeteer,
 };

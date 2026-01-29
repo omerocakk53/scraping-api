@@ -1,8 +1,7 @@
-const scraperService = require("../services/scraperService");
+const youtubeService = require("../services/youtubeService");
 const { validateScrapeRequest } = require("../utils/validation");
 
-exports.scrapeUrl = async (req, res) => {
-  // 1. ADIM: Gelen isteği doğrula (Validation)
+exports.scrapeYoutube = async (req, res) => {
   const { error, value } = validateScrapeRequest(req.body);
 
   if (error) {
@@ -14,17 +13,20 @@ exports.scrapeUrl = async (req, res) => {
   }
 
   try {
-    const result = await scraperService.scrapeUrl(value);
+    const result = await youtubeService.scrapeYoutubeComments(
+      value.url,
+      value.limit,
+    );
 
     res.json({
       success: true,
       ...result,
     });
   } catch (error) {
-    console.error("Scraping hatası:", error.message);
+    console.error("Youtube Scraping hatası:", error.message);
     res.status(500).json({
       success: false,
-      error: "Scraping işlemi başarısız oldu",
+      error: "Youtube scraping işlemi başarısız oldu",
       message: error.message,
     });
   }

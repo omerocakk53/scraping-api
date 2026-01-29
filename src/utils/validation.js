@@ -6,23 +6,15 @@ const scrapeSchema = Joi.object({
       "Geçerli bir URL adresi girmelisiniz (örnek: https://google.com)",
     "any.required": "URL alanı zorunludur",
   }),
-  scrapeType: Joi.string().valid("general", "custom").default("general"),
-  selectors: Joi.array()
-    .items(
-      Joi.object({
-        name: Joi.string().required(),
-        selector: Joi.string().required(),
-        attr: Joi.string().allow("", null).optional(),
-      }),
-    )
-    .when("scrapeType", {
-      is: "custom",
-      then: Joi.required(),
-      otherwise: Joi.optional(),
+  scrapeType: Joi.string()
+    .valid("youtube-comments")
+    .default("youtube-comments")
+    .messages({
+      "any.only": "Scrape tipi sadece 'youtube-comments' olabilir.",
     }),
-  method: Joi.string().valid("static", "dynamic").default("dynamic").messages({
-    "any.only": 'Yöntem sadece "static" veya "dynamic" olabilir',
-  }),
+  // Allow method but ignore it or validate if passed
+  method: Joi.string().optional(),
+  limit: Joi.number().integer().min(1).optional().allow(null, ""),
 });
 
 const validateScrapeRequest = (data) => {

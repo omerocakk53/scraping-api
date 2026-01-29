@@ -2,12 +2,6 @@ const express = require("express");
 const router = express.Router();
 const scraperController = require("../controllers/scraperController");
 
-// Kullanım
-// {
-//   "url": "https://ornek-site.com",
-//   "type": "dynamic" // veya statik siteler için "static"
-// }
-
-router.post("/scrape", scraperController.scrapeUrl);
+router.post("/scrape/youtube", scraperController.scrapeYoutube);
 
 module.exports = router;
