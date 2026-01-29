@@ -262,7 +262,8 @@ exports.scrapeUrl = async (req, res) => {
       success: true,
       info: {
         url: url,
-        method: type,
+        method: method,
+        scrapeType: scrapeType,
         duration: `${duration}ms`,
         timestamp: new Date().toISOString(),
         savedToFile: savedFilePath
