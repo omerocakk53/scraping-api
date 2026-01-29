@@ -38,7 +38,7 @@ exports.login = async (req, res) => {
   res.json({
     success: true,
     accessToken,
-    user: { id: user.id, username: user.username },
+    user: { id: user.id, username: user.username, role: user.role },
   });
 };
 
@@ -68,12 +68,10 @@ exports.refreshToken = async (req, res) => {
       accessToken: newAccessToken,
     });
   } catch (error) {
-    return res
-      .status(403)
-      .json({
-        success: false,
-        error: "Geçersiz veya süresi dolmuş refresh token",
-      });
+    return res.status(403).json({
+      success: false,
+      error: "Geçersiz veya süresi dolmuş refresh token",
+    });
   }
 };
 

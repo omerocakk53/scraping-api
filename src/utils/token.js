@@ -6,7 +6,7 @@ const {
 
 const generateAccessToken = (user) => {
   return jwt.sign(
-    { id: user.id, username: user.username },
+    { id: user.id, username: user.username, role: user.role },
     ACCESS_TOKEN_SECRET,
     { expiresIn: "15m" },
   );
@@ -14,7 +14,7 @@ const generateAccessToken = (user) => {
 
 const generateRefreshToken = (user) => {
   return jwt.sign(
-    { id: user.id, username: user.username },
+    { id: user.id, username: user.username, role: user.role },
     REFRESH_TOKEN_SECRET,
     { expiresIn: "7d" },
   );

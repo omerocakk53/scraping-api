@@ -19,4 +19,14 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-module.exports = { authenticateToken };
+const verifySuperAdmin = (req, res, next) => {
+  if (req.user && req.user.role === "superadmin") {
+    next();
+  } else {
+    return res
+      .status(403)
+      .json({ success: false, error: "Yetkisiz erişim (SuperAdmin gerekli)" });
+  }
+};
+
+module.exports = { authenticateToken, verifySuperAdmin };
