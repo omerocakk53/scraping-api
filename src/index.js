@@ -8,8 +8,12 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5173", // Frontend URL
-    credentials: true, // Cookie gönderimi için gerekli
+    origin: [
+      "http://localhost:5173",
+      "http://dscraping.online",
+      "https://dscraping.online",
+    ],
+    credentials: true,
   }),
 );
 app.use(express.json());
