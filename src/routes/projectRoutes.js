@@ -10,5 +10,6 @@ router.delete("/projects/:projectId", projectController.deleteProject);
 router.post("/projects/:projectId/targets", projectController.addTarget);
 router.post("/projects/:projectId/scrape", projectController.runProjectScrape);
 router.get("/projects/:projectId/export", projectController.exportProject);
+router.get("/projects/:projectId/insights", projectController.projectInsights);
 
 module.exports = router;

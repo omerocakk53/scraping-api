@@ -6,6 +6,8 @@ const {
   validateTargetRequest,
 } = require("../utils/projectValidation");
 const scrapeService = require("../services/scrapeService");
+const { buildProjectInsights } = require("../services/insightsService");
+const { buildProjectRecommendations } = require("../services/recommendationService");
 
 const handleError = (res, error) => {
   if (error.code === "PROJECT_NOT_FOUND") {
@@ -159,6 +161,20 @@ exports.exportProject = async (req, res) => {
       `attachment; filename="${exported.filename}"`,
     );
     res.send(exported.body);
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+exports.projectInsights = async (req, res) => {
+  try {
+    const project = await projectService.getProject(req.params.projectId, req.user);
+    const insights = buildProjectInsights(project);
+    res.json({
+      success: true,
+      insights,
+      recommendations: buildProjectRecommendations(insights),
+    });
   } catch (error) {
     handleError(res, error);
   }

@@ -14,6 +14,7 @@ Bu repo, veri kazıma platformunun backend çekirdeği olacak.
 - Project target ve run history desteği
 - Kalıcı job geçmişi
 - JSON/CSV dışa aktarma endpointleri
+- Proje içgörüleri ve öneri katmanı
 
 ## Hedef
 
@@ -81,6 +82,7 @@ Bu repo, veri kazıma platformunun backend çekirdeği olacak.
 - Scrape sonuçlarını proje bazlı organize etmek
 - CSV/export ve geçmiş iş ekranını eklemek
 - AI tüketimi için analiz/özet katmanı eklemek
+- Kaynak bazlı kalite metrikleri ve uyarılar eklemek
 
 ## Not
 
