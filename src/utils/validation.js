@@ -1,4 +1,8 @@
 const Joi = require("joi");
+const { listAdapters, getDefaultAdapterKey } = require("../adapters");
+
+const supportedScrapeTypes = listAdapters().map((adapter) => adapter.key);
+const defaultScrapeType = getDefaultAdapterKey();
 
 const scrapeSchema = Joi.object({
   url: Joi.string().uri().required().messages({
@@ -7,14 +11,15 @@ const scrapeSchema = Joi.object({
     "any.required": "URL alanı zorunludur",
   }),
   scrapeType: Joi.string()
-    .valid("youtube-comments")
-    .default("youtube-comments")
+    .valid(...supportedScrapeTypes)
+    .default(defaultScrapeType)
     .messages({
-      "any.only": "Scrape tipi sadece 'youtube-comments' olabilir.",
+      "any.only": `Scrape tipi sadece '${supportedScrapeTypes.join("', '")}' olabilir.`,
     }),
   // Allow method but ignore it or validate if passed
   method: Joi.string().optional(),
   limit: Joi.number().integer().min(1).optional().allow(null, ""),
+  projectId: Joi.string().guid({ version: ["uuidv4"] }).optional().allow(null, ""),
 });
 
 const validateScrapeRequest = (data) => {

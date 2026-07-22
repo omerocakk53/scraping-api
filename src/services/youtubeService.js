@@ -1,5 +1,4 @@
 const { getBrowser } = require("./browserService");
-const dataService = require("./dataService");
 const {
   getCount,
   nudgeScroll,
@@ -7,11 +6,7 @@ const {
   sleep,
   waitForCountIncrease,
 } = require("./scrapeCore");
-const {
-  createFilenameFromUrl,
-  extractYoutubeCommentsWithPuppeteer,
-} = require("../utils/scraperUtils");
-const path = require("path");
+const { extractYoutubeCommentsWithPuppeteer } = require("../utils/scraperUtils");
 
 const YOUTUBE_COMMENT_SELECTOR = "ytd-comment-thread-renderer";
 const YOUTUBE_SPINNER_SELECTOR = "ytd-continuation-item-renderer";
@@ -115,15 +110,12 @@ exports.scrapeYoutubeComments = async (url, limit = 100) => {
 
     const duration = Date.now() - startTime;
     console.log(`[YoutubeService] İşlem tamamlandı. Süre: ${duration}ms`);
-    const filename = createFilenameFromUrl(url);
-    const savedFilePath = await dataService.saveData(scrapedData, filename);
     return {
       info: {
         url,
         scrapeType: "youtube-comments",
         duration: `${duration}ms`,
         timestamp: new Date().toISOString(),
-        savedToFile: path.basename(savedFilePath),
       },
       data: scrapedData,
     };

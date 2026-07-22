@@ -1,4 +1,4 @@
-const fs = require("fs");
+const fs = require("fs/promises");
 const path = require("path");
 
 const DATA_DIR = path.join(__dirname, "../../data");
@@ -7,9 +7,15 @@ const DATA_DIR = path.join(__dirname, "../../data");
  * Ensures the data directory exists.
  */
 const ensureDataDir = async () => {
-  if (!fs.existsSync(DATA_DIR)) {
-    await fs.promises.mkdir(DATA_DIR, { recursive: true });
+  await fs.mkdir(DATA_DIR, { recursive: true });
+};
+
+const resolveDataPath = (filename) => {
+  const filePath = path.resolve(DATA_DIR, filename);
+  if (!filePath.startsWith(path.resolve(DATA_DIR) + path.sep)) {
+    throw new Error("Invalid filename");
   }
+  return filePath;
 };
 
 /**
@@ -20,8 +26,8 @@ const ensureDataDir = async () => {
  */
 exports.saveData = async (data, filename) => {
   await ensureDataDir();
-  const filePath = path.join(DATA_DIR, filename);
-  await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+  const filePath = resolveDataPath(filename);
+  await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
   return filePath;
 };
 
@@ -31,22 +37,22 @@ exports.saveData = async (data, filename) => {
  */
 exports.listFiles = async () => {
   await ensureDataDir();
-  const files = await fs.promises.readdir(DATA_DIR);
+  const files = await fs.readdir(DATA_DIR);
   const jsonFiles = files.filter((file) => file.endsWith(".json"));
 
   const fileDetails = await Promise.all(
     jsonFiles.map(async (filename) => {
-      const stat = await fs.promises.stat(path.join(DATA_DIR, filename));
+      const stat = await fs.stat(path.join(DATA_DIR, filename));
       return {
         name: filename,
         size: stat.size,
         createdAt: stat.birthtime,
+        updatedAt: stat.mtime,
       };
     }),
   );
 
-  // Sort by newest first
-  return fileDetails.sort((a, b) => b.createdAt - a.createdAt);
+  return fileDetails.sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
 /**
@@ -55,11 +61,13 @@ exports.listFiles = async () => {
  * @returns {Promise<Object>}
  */
 exports.getFile = async (filename) => {
-  const filePath = path.join(DATA_DIR, filename);
-  if (!fs.existsSync(filePath)) {
+  const filePath = resolveDataPath(filename);
+  try {
+    await fs.access(filePath);
+  } catch (error) {
     throw new Error("File not found");
   }
-  const data = await fs.promises.readFile(filePath, "utf-8");
+  const data = await fs.readFile(filePath, "utf-8");
   return JSON.parse(data);
 };
 
@@ -68,10 +76,11 @@ exports.getFile = async (filename) => {
  * @param {string} filename
  */
 exports.deleteFile = async (filename) => {
-  const filePath = path.join(DATA_DIR, filename);
-  if (fs.existsSync(filePath)) {
-    await fs.promises.unlink(filePath);
-  } else {
+  const filePath = resolveDataPath(filename);
+  try {
+    await fs.access(filePath);
+    await fs.unlink(filePath);
+  } catch (error) {
     throw new Error("File not found");
   }
 };

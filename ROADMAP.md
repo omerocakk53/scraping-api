@@ -2,6 +2,19 @@
 
 Bu repo, veri kazıma platformunun backend çekirdeği olacak.
 
+## Bu Oturumda Kurulan Temel
+
+- Ortak adapter kayıt defteri
+- Normalize edilmiş sonuç zarfı
+- In-memory job queue ve retry akışı
+- Structured log formatı
+- YouTube, Amazon ve Play Store için adapter iskeletleri
+- Adapter ve job listeleme endpointleri
+- Proje bazlı kalıcı kayıt katmanı
+- Project target ve run history desteği
+- Kalıcı job geçmişi
+- JSON/CSV dışa aktarma endpointleri
+
 ## Hedef
 
 - Birden fazla kaynaktan veri toplamak
@@ -60,6 +73,18 @@ Bu repo, veri kazıma platformunun backend çekirdeği olacak.
 - Aynı anda çalışan browser sayısını kontrollü tutmak
 - Her scrape işini trace edilebilir hale getirmek
 - Kaynak eklemeyi kolaylaştıran bir adapter iskeleti oluşturmak
+
+## Sonraki Somut Adım
+
+- Job kuyruğunu kalıcı depolama ile desteklemek
+- Amazon ve Play Store için gerçek dünya selector ince ayarı
+- Scrape sonuçlarını proje bazlı organize etmek
+- CSV/export ve geçmiş iş ekranını eklemek
+- AI tüketimi için analiz/özet katmanı eklemek
+
+## Not
+
+- `README.md` dosyası bu repoda UTF-8 dışı bir içerik taşıyor; bu yüzden şimdilik dokunmadım.
 
 ## Not
 
