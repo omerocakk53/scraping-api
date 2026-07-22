@@ -1,139 +1,118 @@
 const { getBrowser } = require("./browserService");
 const dataService = require("./dataService");
 const {
+  getCount,
+  nudgeScroll,
+  scrollToBottom,
+  sleep,
+  waitForCountIncrease,
+} = require("./scrapeCore");
+const {
   createFilenameFromUrl,
   extractYoutubeCommentsWithPuppeteer,
 } = require("../utils/scraperUtils");
 const path = require("path");
 
-const USER_AGENT =
+const YOUTUBE_COMMENT_SELECTOR = "ytd-comment-thread-renderer";
+const YOUTUBE_SPINNER_SELECTOR = "ytd-continuation-item-renderer";
+const YOUTUBE_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
+const YOUTUBE_COMMENT_WAIT_TIMEOUT_MS = 10000;
+const YOUTUBE_COUNT_POLL_TIMEOUT_MS = 5000;
+const YOUTUBE_FALLBACK_WAIT_MS = 3000;
+const YOUTUBE_RENDER_SETTLE_MS = 1000;
+const YOUTUBE_FALLBACK_SCROLL_WAIT_MS = 2000;
+const YOUTUBE_MAX_IDLE_ROUNDS = 10;
+
+const getTargetLimit = (limit) => {
+  const parsedLimit = Number(limit);
+  if (!Number.isFinite(parsedLimit) || parsedLimit <= 0) {
+    return Infinity;
+  }
+
+  return parsedLimit;
+};
 
 exports.scrapeYoutubeComments = async (url, limit = 100) => {
+  const targetLimit = getTargetLimit(limit);
   console.log(
-    `[YoutubeService] YouTube yorumları kazınıyor... Hedef: ${limit === 0 ? "Bulabildiğin kadar" : limit}`,
+    `[YoutubeService] YouTube yorumları kazınıyor... Hedef: ${targetLimit === Infinity ? "Bulabildiğin kadar" : targetLimit}`,
   );
   const browser = await getBrowser();
   const page = await browser.newPage();
   const startTime = Date.now();
   try {
-    await page.setUserAgent(USER_AGENT);
+    await page.setUserAgent(YOUTUBE_USER_AGENT);
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
-    await page.evaluate(() => {
-      window.scrollBy(0, 500);
-    });
+    await page.evaluate(() => window.scrollBy(0, 500));
     console.log("[YoutubeService] Yorumların yüklenmesi bekleniyor...");
     try {
-      await page.waitForSelector("ytd-comment-thread-renderer", {
-        timeout: 10000,
+      await page.waitForSelector(YOUTUBE_COMMENT_SELECTOR, {
+        timeout: YOUTUBE_COMMENT_WAIT_TIMEOUT_MS,
       });
     } catch (e) {
       console.log("Yorumlar ilk bakışta bulunamadı, alta kaydırılıyor...");
-      await page.evaluate(() => {
-        window.scrollTo(0, document.documentElement.scrollHeight);
-      });
-      await new Promise((r) => setTimeout(r, 2000));
+      await scrollToBottom(page);
+      await sleep(YOUTUBE_FALLBACK_SCROLL_WAIT_MS);
     }
 
-    // Dynamic scraping loop
-    let lastCommentCount = 0;
     let noNewCommentsCount = 0;
-    const maxRetries = 10; // Increased retries
-    const MIN_WAIT_TIME = 2000;
-
-    // Default limit if not provided or 0
-    const targetLimit = !limit || limit <= 0 ? 100000 : limit; // Set incredibly high if 0
-
     console.log(
       `[YoutubeService] Yorumlar yükleniyor... Hedef: ~${targetLimit}`,
     );
 
-    while (true) {
-      // 1. Get current count
-      const currentCommentsCount = await page.evaluate(() => {
-        return document.querySelectorAll("ytd-comment-thread-renderer").length;
-      });
+    while (noNewCommentsCount < YOUTUBE_MAX_IDLE_ROUNDS) {
+      const currentCommentsCount = await getCount(page, YOUTUBE_COMMENT_SELECTOR);
 
       console.log(
         `[YoutubeService] Şu anki yorum sayısı: ${currentCommentsCount} / ${targetLimit}`,
       );
 
-      // 2. Check if we reached limit
       if (currentCommentsCount >= targetLimit) {
         console.log("[YoutubeService] Hedeflenen limite ulaşıldı.");
         break;
       }
 
-      // 3. Scroll to bottom
-      await page.evaluate(() => {
-        window.scrollTo(0, document.documentElement.scrollHeight);
-      });
+      await scrollToBottom(page);
 
-      // 4. Wait for new comments or loader
       try {
-        // Wait until comment count increases OR we see a spinner, but simplest is wait for count change
-        // We poll every 500ms for up to 5 seconds
-        await page.waitForFunction(
-          (lastCount) =>
-            document.querySelectorAll("ytd-comment-thread-renderer").length >
-            lastCount,
-          { timeout: 5000 },
+        await waitForCountIncrease(
+          page,
+          YOUTUBE_COMMENT_SELECTOR,
           currentCommentsCount,
+          YOUTUBE_COUNT_POLL_TIMEOUT_MS,
         );
 
-        // If we are here, count increased
         noNewCommentsCount = 0;
-
-        // Small delay to let render finish
-        await new Promise((r) => setTimeout(r, 1000));
+        await sleep(YOUTUBE_RENDER_SETTLE_MS);
       } catch (e) {
-        // Timeout happened, meaning count didn't increase in 5s
         console.log(
-          `[YoutubeService] Yeni yorum bulunamadı/yüklenemedi... (${noNewCommentsCount + 1}/${maxRetries})`,
+          `[YoutubeService] Yeni yorum bulunamadı/yüklenemedi... (${noNewCommentsCount + 1}/${YOUTUBE_MAX_IDLE_ROUNDS})`,
         );
         noNewCommentsCount++;
 
-        // Try to find if there is a spinner
-        const hasSpinner = await page.evaluate(() => {
-          return !!document.querySelector("ytd-continuation-item-renderer");
-        });
+        const hasSpinner = await page.evaluate(
+          (selector) => !!document.querySelector(selector),
+          YOUTUBE_SPINNER_SELECTOR,
+        );
 
         if (hasSpinner) {
           console.log("[YoutubeService] Spinner var, bekleniyor...");
-          // Wait a bit more if spinner exists
-          await new Promise((r) => setTimeout(r, 3000));
+          await sleep(YOUTUBE_FALLBACK_WAIT_MS);
         } else {
-          // No spinner, maybe stuck? Try scrolling up and down
-          await page.evaluate(() => {
-            window.scrollBy(0, -1000);
-            setTimeout(
-              () => window.scrollTo(0, document.documentElement.scrollHeight),
-              500,
-            );
-          });
-          await new Promise((r) => setTimeout(r, 2000));
-        }
-
-        if (noNewCommentsCount >= maxRetries) {
-          console.log(
-            "[YoutubeService] Maksimum deneme sayısına ulaşıldı, bitiriliyor.",
-          );
-          break;
+          await nudgeScroll(page);
+          await sleep(YOUTUBE_FALLBACK_SCROLL_WAIT_MS);
         }
       }
     }
 
     const scrapedData = await extractYoutubeCommentsWithPuppeteer(page);
 
-    // Trim if we got more than limit (only if limit was set > 0)
-    if (
-      limit > 0 &&
-      scrapedData.comments &&
-      scrapedData.comments.length > limit
-    ) {
-      scrapedData.comments = scrapedData.comments.slice(0, limit);
-      scrapedData.total_comments_found = limit;
+    if (Number.isFinite(targetLimit) && scrapedData.comments?.length > targetLimit) {
+      scrapedData.comments = scrapedData.comments.slice(0, targetLimit);
+      scrapedData.total_comments_found = targetLimit;
     }
+
     const duration = Date.now() - startTime;
     console.log(`[YoutubeService] İşlem tamamlandı. Süre: ${duration}ms`);
     const filename = createFilenameFromUrl(url);
@@ -152,6 +131,6 @@ exports.scrapeYoutubeComments = async (url, limit = 100) => {
     console.error("[YoutubeService] Hata:", error);
     throw error;
   } finally {
-    await page.close();
+    await page.close().catch(() => {});
   }
 };
