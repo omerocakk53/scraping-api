@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticateToken } = require("../middleware/authMiddleware");
 
 const authRoutes = require("./authRoutes");
+const healthRoutes = require("./healthRoutes");
 const scraperRoutes = require("./scraperRoutes");
 const adapterRoutes = require("./adapterRoutes");
 const jobRoutes = require("./jobRoutes");
@@ -12,6 +13,7 @@ const userRoutes = require("./userRoutes");
 
 // Public Routes
 router.use("/auth", authRoutes);
+router.use("/", healthRoutes);
 
 // Protected Routes
 router.use("/", authenticateToken, scraperRoutes);

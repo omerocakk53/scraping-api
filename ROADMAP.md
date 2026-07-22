@@ -15,6 +15,7 @@ Bu repo, veri kazıma platformunun backend çekirdeği olacak.
 - Kalıcı job geçmişi
 - JSON/CSV dışa aktarma endpointleri
 - Proje içgörüleri ve öneri katmanı
+- Health/uptime endpointi
 
 ## Hedef
 
